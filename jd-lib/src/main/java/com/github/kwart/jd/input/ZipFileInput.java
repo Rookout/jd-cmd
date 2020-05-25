@@ -83,15 +83,18 @@ public class ZipFileInput extends AbstractFileJDInput {
                     }
                     if (IOUtils.isClassFile(entryName)) {
                         //if (IOUtils.isInnerClass(entryName)) {
-                            // don't handle inner classes
-                            //LOGGER.trace("Skipping inner class {}", entryName);
-                            //continue;
+                        // don't handle inner classes
+                        //LOGGER.trace("Skipping inner class {}", entryName);
+                        //continue;
                         //}
                         LOGGER.debug("Decompiling {}", entryName);
                         try {
                             ByteArrayLoader bal = new ByteArrayLoader(zis, entryName);
-                            jdOutput.processClass(IOUtils.cutClassSuffix(entryName),
-                                    javaDecompiler.decompileClass(bal, entryName));
+                            String decompiledClass = javaDecompiler.decompileClass(bal, entryName);
+                            String classWithoutSuffix = IOUtils.cutClassSuffix(entryName);
+                            jdOutput.processClass(classWithoutSuffix, decompiledClass);
+
+
                         } catch (LoaderException e) {
                             LOGGER.error("LoaderException occured", e);
                         }
@@ -106,6 +109,8 @@ public class ZipFileInput extends AbstractFileJDInput {
         } finally {
             IOUtils.closeQuietly(zis);
         }
+
         jdOutput.commit();
     }
+
 }

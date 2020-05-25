@@ -19,14 +19,19 @@ package com.github.kwart.jd.cli;
 import static com.beust.jcommander.JCommander.getConsole;
 import static org.slf4j.Logger.ROOT_LOGGER_NAME;
 
-import java.io.DataInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipInputStream;
 
+import com.github.kwart.jd.loader.ByteArrayLoader;
+import org.jd.core.v1.api.loader.LoaderException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -109,6 +114,8 @@ public final class Main {
                     InputOutputPair inOut = getInOutPlugins(file, outputPlugin, cliArguments.getPattern());
                     inOut.getJdInput().decompile(javaDecompiler, inOut.getJdOutput());
                     decompiled = true;
+
+                    Finalize(file);
                 } catch (Exception e) {
                     LOGGER.warn("Problem occured during instantiating plugins", e);
                 }
@@ -124,29 +131,184 @@ public final class Main {
 
     }
 
+    private static void Finalize(File outputFile) {
+        // Extract the entire zip
+        String outputFilePath = outputFile.getAbsolutePath() + ".src.zip";
+        System.out.println(outputFilePath);
+
+        String outDir = outputFile.getAbsoluteFile() + ".src";
+        System.out.println(outDir);
+
+        File directory = new File(outDir);
+        if (!directory.exists()) {
+            directory.mkdir();
+        }
+
+        ZipFile zipFile = null;
+        try {
+            zipFile = new ZipFile(outputFilePath);
+            Enumeration<? extends ZipEntry> entries = zipFile.entries();
+
+            ZipEntry entry = null;
+
+            while (entries.hasMoreElements()) {
+                entry = entries.nextElement();
+
+                if (!entry.isDirectory()) {
+                    try {
+                        final String entryName = entry.getName();
+                        if (entryName.endsWith("decompiled.java")) {
+                            //System.out.println("working on: "+ entryName );
+
+                            File f = new File(entryName);
+                            String p = f.getPath();
+                            String fol = "\\";
+                            int index = p.lastIndexOf("\\");
+                            if (index != -1) {
+                                fol = p.substring(0, index);
+                            } else {
+                                index = p.lastIndexOf("/");
+                                if (index != -1) {
+                                    fol = p.substring(0, index);
+                                }
+                            }
+
+                            //Create inner folder
+                            Path path = Paths.get(outDir, fol);
+                            File dir = new File(path.toUri().getPath());
+                            if (!dir.exists()) {
+                                dir.mkdirs();
+                            }
+
+                            InputStream stream = zipFile.getInputStream(entry);
+
+                            byte[] buffer = new byte[stream.available()];
+                            stream.read(buffer);
+
+                            Path path12 = Paths.get(outDir, entryName);
+                            File targetFile = new File(path12.toUri().getPath());
+                            OutputStream outStream = new FileOutputStream(targetFile);
+                            outStream.write(buffer);
+                            outStream.close();
+
+                            String actualFileName = path12.toUri().getPath();
+                            int index123 = actualFileName.indexOf('$');
+                            if (index123 != -1) {
+                                actualFileName = actualFileName.substring(0, index123) + ".java";
+                            } else {
+                                index123 = actualFileName.indexOf(".decompiled.java");
+                                if (index123 != -1) {
+                                    actualFileName = actualFileName.substring(0, index123) + ".java";
+                                }
+                            }
+
+                            System.out.println("xxxx:" + actualFileName);
+
+                            File tmpDir = new File(actualFileName);
+                            boolean exists = tmpDir.exists();
+                            Object[] allLines;
+                            if (exists){
+                                allLines = Files.readAllLines(tmpDir.toPath()).toArray();
+                            }else{
+                                allLines = new String[0];
+                            }
+
+                            //Now lets format the decompiled files into one
+
+                            List<String> decompiledLines = Files.readAllLines(Paths.get(targetFile.getAbsolutePath()));
+                            for (String line : decompiledLines){
+                                try{
+                                    int i1 = line.indexOf("/*");
+                                    int i2 = line.indexOf("*/");
+                                    if (i1 == -1 || i2 == -1){
+                                        continue;
+                                    }
+                                    String lineno = line.substring(i1+ "/*".length() ,i2).trim();
+                                    int line_no = Integer.parseInt(lineno);
+                                    if(0 != line_no){
+                                        //Check if destination array has index - if doesnt - write the line
+
+                                        // Append list
+                                        if (allLines.length <= line_no){
+                                            Object newarr[] = new Object[line_no + 1];
+                                            for (int i = 0; i < allLines.length; i++)
+                                                newarr[i] = allLines[i];
+                                            allLines = newarr;
+                                        }
+
+                                        if(allLines[line_no - 1] == null || allLines[line_no - 1].equals("")) {
+                                            allLines[line_no - 1] = line;
+                                        }
+                                    }
+                                }catch (Throwable t){
+                                    System.out.println("Exception: " + t);
+                                    t.printStackTrace();
+                                    continue;
+                                }
+
+
+                            }
+
+                            File fout = new File(actualFileName);
+                            FileOutputStream fos = new FileOutputStream(fout);
+
+                            BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(fos));
+
+                            for (int i = 0; i < allLines.length; i++) {
+                                if (allLines[i] != null) {
+                                    bw.write((String) allLines[i]);
+                                }
+                                bw.newLine();
+                            }
+
+                            bw.close();
+                        }
+                    } catch (Throwable t) {
+                        System.out.println("Exception: " + t);
+                        t.printStackTrace();
+                    }
+                }
+            }
+        } catch (IOException e) {
+            LOGGER.error("IOException occured", e);
+        } finally {
+            try {
+                zipFile.close();
+            } catch (Throwable e) {
+            }
+        }
+
+
+        //String actualFileName = classWithoutSuffix;
+        //int index = classWithoutSuffix.indexOf('$');
+        //if (index != -1) {
+        //    actualFileName = classWithoutSuffix.substring(0, index);
+        //}
+    }
+
     private static ExtCommander initCommander(String[] args, final CLIArguments cliArguments) {
         final ExtCommander jCmd = new ExtCommander(cliArguments);
         jCmd.setAcceptUnknownOptions(true);
         jCmd.parse(args);
         jCmd.setProgramName("java -jar jd-cli.jar");
         jCmd.setUsageHead(getVersionLine() + "\n"
-            + "\nThe jd-cli is a command line interface for the Java Decompiler (http://jd.benow.ca/). "
-            + "The application decompile classes, zip archives "
-            + "(.zip, .jar, .war, ...) and directories containing classes. "
-            + "Each supported input type has configured corresponding "
-            + "default output type (class->screen, zip->zip, directory->directory). Man can simply override the output type "
-            + "by specifying a command line parameter (-oc, -od, -oz). Multiple output type parameters can be used at once.");
+                + "\nThe jd-cli is a command line interface for the Java Decompiler (http://jd.benow.ca/). "
+                + "The application decompile classes, zip archives "
+                + "(.zip, .jar, .war, ...) and directories containing classes. "
+                + "Each supported input type has configured corresponding "
+                + "default output type (class->screen, zip->zip, directory->directory). Man can simply override the output type "
+                + "by specifying a command line parameter (-oc, -od, -oz). Multiple output type parameters can be used at once.");
         jCmd.setUsageTail("Examples:\n\n"
-            + "$ java -jar jd-cli.jar HelloWorld.class\n"
-            + " Shows decompiled class on a screen\n\n"
-            + "$ java -jar jd-cli.jar --skipResources -n -g ALL app.jar\n"
-            + " Decompiles app.jar to app.src.jar; It doesn't copy resources to the output jar, the decompiled classes contain "
-            + "line numbers as comments and the jd-cli prints the most verbose debug information about decompilation\n\n"
-            + "$ java -jar jd-cli.jar myapp.jar -od decompiled -oc\n"
-            + " Decompiles content of myapp.jar to directory named 'decompiled' and also on a screen\n"
-            + "\n"
-            + "This program comes with ABSOLUTELY NO WARRANTY. This is free software, and you are welcome to redistribute it "
-            + "under GPLv3 conditions."
+                + "$ java -jar jd-cli.jar HelloWorld.class\n"
+                + " Shows decompiled class on a screen\n\n"
+                + "$ java -jar jd-cli.jar --skipResources -n -g ALL app.jar\n"
+                + " Decompiles app.jar to app.src.jar; It doesn't copy resources to the output jar, the decompiled classes contain "
+                + "line numbers as comments and the jd-cli prints the most verbose debug information about decompilation\n\n"
+                + "$ java -jar jd-cli.jar myapp.jar -od decompiled -oc\n"
+                + " Decompiles content of myapp.jar to directory named 'decompiled' and also on a screen\n"
+                + "\n"
+                + "This program comes with ABSOLUTELY NO WARRANTY. This is free software, and you are welcome to redistribute it "
+                + "under GPLv3 conditions."
         );
         return jCmd;
     }
@@ -225,8 +387,7 @@ public final class Main {
                     String decompiledZipName = inputFile.getName();
                     int suffixPos = decompiledZipName.lastIndexOf(".");
                     if (suffixPos >= 0) {
-                        decompiledZipName = decompiledZipName.substring(0, suffixPos) + ".src"
-                                + decompiledZipName.substring(suffixPos);
+                        decompiledZipName = decompiledZipName.substring(0, suffixPos) + decompiledZipName.substring(suffixPos) + ".src.zip";
                     } else {
                         decompiledZipName = decompiledZipName + ".src";
                     }
