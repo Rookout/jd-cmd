@@ -277,12 +277,8 @@ public final class Main {
             }
         }
 
-
-        //String actualFileName = classWithoutSuffix;
-        //int index = classWithoutSuffix.indexOf('$');
-        //if (index != -1) {
-        //    actualFileName = classWithoutSuffix.substring(0, index);
-        //}
+        File deleteFile = new File(outputFilePath);
+        deleteFile.delete();
     }
 
     private static ExtCommander initCommander(String[] args, final CLIArguments cliArguments) {
