@@ -78,11 +78,11 @@ public class DirInput extends AbstractFileJDInput {
                 return;
             }
             if (IOUtils.isClassFile(fileName)) {
-                if (IOUtils.isInnerClass(fileName)) {
+                //if (IOUtils.isInnerClass(fileName)) {
                     // don't handle inner classes
-                    LOGGER.trace("Skipping inner class {}", nextFile);
-                    return;
-                }
+                    //LOGGER.trace("Skipping inner class {}", nextFile);
+                    //return;
+                //}
                 LOGGER.debug("Decompiling {}", nextFile);
                 String internalName = IOUtils.cutClassSuffix(nameWithPath);
                 jdOutput.processClass(internalName, javaDecompiler.decompileClass(fileLoader, internalName));

@@ -65,7 +65,7 @@ public class ZipFileInput extends AbstractFileJDInput {
             return;
         }
 
-        boolean skipResources = javaDecompiler.getOptions().isSkipResources();
+        boolean skipResources = true;
 
         LOGGER.debug("Initializing decompilation of a zip file {}", file);
 
@@ -82,11 +82,11 @@ public class ZipFileInput extends AbstractFileJDInput {
                         continue;
                     }
                     if (IOUtils.isClassFile(entryName)) {
-                        if (IOUtils.isInnerClass(entryName)) {
+                        //if (IOUtils.isInnerClass(entryName)) {
                             // don't handle inner classes
-                            LOGGER.trace("Skipping inner class {}", entryName);
-                            continue;
-                        }
+                            //LOGGER.trace("Skipping inner class {}", entryName);
+                            //continue;
+                        //}
                         LOGGER.debug("Decompiling {}", entryName);
                         try {
                             ByteArrayLoader bal = new ByteArrayLoader(zis, entryName);

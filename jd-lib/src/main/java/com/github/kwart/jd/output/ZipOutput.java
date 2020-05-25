@@ -114,7 +114,7 @@ public class ZipOutput extends AbstractJDOutput {
             return;
         }
         try {
-            zos.putNextEntry(new ZipEntry(className + JAVA_SUFFIX));
+            zos.putNextEntry(new ZipEntry(className + ".decompiled" + JAVA_SUFFIX));
             zos.write(src.getBytes(UTF_8));
             zos.closeEntry();
             countClasses++;

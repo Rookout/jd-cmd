@@ -110,7 +110,7 @@ public class CLIArguments implements DecompilerOptions {
     }
 
     public boolean isDisplayLineNumbers() {
-        return displayLineNumbers;
+        return true;
     }
 
     public boolean isEscapeUnicodeCharacters() {
