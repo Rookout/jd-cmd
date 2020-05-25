@@ -19,7 +19,16 @@ package com.github.kwart.jd.cli;
 import static com.beust.jcommander.JCommander.getConsole;
 import static org.slf4j.Logger.ROOT_LOGGER_NAME;
 
-import java.io.*;
+
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.OutputStreamWriter;
+import java.io.FileOutputStream;
+import java.io.FileInputStream;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -28,10 +37,7 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-import java.util.zip.ZipInputStream;
 
-import com.github.kwart.jd.loader.ByteArrayLoader;
-import org.jd.core.v1.api.loader.LoaderException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -134,10 +140,7 @@ public final class Main {
     private static void Finalize(File outputFile) {
         // Extract the entire zip
         String outputFilePath = outputFile.getAbsolutePath() + ".src.zip";
-        System.out.println(outputFilePath);
-
         String outDir = outputFile.getAbsoluteFile() + ".src";
-        System.out.println(outDir);
 
         File directory = new File(outDir);
         if (!directory.exists()) {
@@ -158,8 +161,6 @@ public final class Main {
                     try {
                         final String entryName = entry.getName();
                         if (entryName.endsWith("decompiled.java")) {
-                            //System.out.println("working on: "+ entryName );
-
                             File f = new File(entryName);
                             String p = f.getPath();
                             String fol = "\\";
@@ -201,8 +202,6 @@ public final class Main {
                                     actualFileName = actualFileName.substring(0, index123) + ".java";
                                 }
                             }
-
-                            System.out.println("xxxx:" + actualFileName);
 
                             File tmpDir = new File(actualFileName);
                             boolean exists = tmpDir.exists();
